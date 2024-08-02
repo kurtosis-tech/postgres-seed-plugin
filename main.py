@@ -14,17 +14,44 @@ def create_flow(service_spec, deployment_spec, flow_uuid, seed_script, db_name, 
     # Prepare the seed script
     escaped_script = seed_script.replace("'", "'\\''")
     init_script = f"""
+#!/bin/bash
+set -e
+
+# Wait for PostgreSQL to be ready
+for i in {{1..30}}; do
+    if pg_isready -h localhost -U $POSTGRES_USER; then
+        break
+    fi
+    echo "Waiting for PostgreSQL to be ready..."
+    sleep 1
+done
+
+if [ $i -eq 30 ]; then
+    echo "Timeout waiting for PostgreSQL to be ready"
+    exit 1
+fi
+
 cat << EOF > /tmp/init.sql
 {escaped_script}
 EOF
-psql -U $POSTGRES_USER -d $POSTGRES_DB -f /tmp/init.sql
+
+# Execute the SQL script
+PGPASSWORD=$POSTGRES_PASSWORD /usr/bin/psql -U $POSTGRES_USER -d $POSTGRES_DB -f /tmp/init.sql
+
+# Check for errors
+if [ $? -ne 0 ]; then
+    echo "Error executing SQL script"
+    exit 1
+fi
+
+echo "SQL script executed successfully"
 """
     
     # Add PostStart lifecycle hook to the Postgres container
     lifecycle = {
         'postStart': {
             'exec': {
-                'command': ['bash', '-c', init_script]
+                'command': ['/bin/bash', '-c', init_script]
             }
         }
     }
