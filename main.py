@@ -12,7 +12,6 @@ def create_flow(service_spec, deployment_spec, flow_uuid, seed_script, db_name, 
     ]
     
     # Prepare the seed script
-    escaped_script = seed_script.replace("'", "'\\''")
     init_script = f"""
 #!/bin/bash
 set -e
@@ -32,7 +31,7 @@ if [ $i -eq 30 ]; then
 fi
 
 cat << EOF > /tmp/init.sql
-{escaped_script}
+{seed_script}
 EOF
 
 # Execute the SQL script
