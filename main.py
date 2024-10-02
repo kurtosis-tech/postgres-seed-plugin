@@ -1,16 +1,8 @@
 import copy
 
-def create_flow(service_spec, deployment_spec, flow_uuid, seed_script, db_name, db_user, db_password):
-    modified_deployment_spec = copy.deepcopy(deployment_spec)
-    container = modified_deployment_spec['template']['spec']['containers'][0]
-    
-    # Add environment variables
-    container['env'] = container.get('env', []) + [
-        {'name': 'POSTGRES_DB', 'value': db_name},
-        {'name': 'POSTGRES_USER', 'value': db_user},
-        {'name': 'POSTGRES_PASSWORD', 'value': db_password},
-    ]
-    
+
+def create_flow(service_specs: list, deployment_specs: list, flow_uuid, seed_script, db_name, db_user, db_password):
+
     # Prepare the seed script
     init_script = f"""
 #!/bin/bash
@@ -45,21 +37,37 @@ fi
 
 echo "SQL script executed successfully"
 """
-    
-    # Add PostStart lifecycle hook to the Postgres container
-    lifecycle = {
-        'postStart': {
-            'exec': {
-                'command': ['/bin/bash', '-c', init_script]
+
+    modified_deployment_specs = []
+
+    for deployment_spec in deployment_specs:
+        modified_deployment_spec = copy.deepcopy(deployment_spec)
+        container = modified_deployment_spec['template']['spec']['containers'][0]
+
+        # Add environment variables
+        container['env'] = container.get('env', []) + [
+            {'name': 'POSTGRES_DB', 'value': db_name},
+            {'name': 'POSTGRES_USER', 'value': db_user},
+            {'name': 'POSTGRES_PASSWORD', 'value': db_password},
+        ]
+
+        # Add PostStart lifecycle hook to the Postgres container
+        lifecycle = {
+            'postStart': {
+                'exec': {
+                    'command': ['/bin/bash', '-c', init_script]
+                }
             }
         }
-    }
-    container['lifecycle'] = lifecycle
+        container['lifecycle'] = lifecycle
+
+        modified_deployment_specs.append(modified_deployment_spec)
     
     return {
-        "deployment_spec": modified_deployment_spec,
+        "deployment_specs": modified_deployment_specs,
         "config_map": {}
     }
+
 
 def delete_flow(config_map, flow_uuid):
     pass
