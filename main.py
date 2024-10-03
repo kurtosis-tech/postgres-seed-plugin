@@ -1,7 +1,7 @@
 import copy
 
 
-def create_flow(service_specs: list, deployment_specs: list, flow_uuid, seed_script, db_name, db_user, db_password):
+def create_flow(service_specs: list, pod_specs: list, flow_uuid, seed_script, db_name, db_user, db_password):
 
     # Prepare the seed script
     init_script = f"""
@@ -38,11 +38,11 @@ fi
 echo "SQL script executed successfully"
 """
 
-    modified_deployment_specs = []
+    modified_pod_specs = []
 
-    for deployment_spec in deployment_specs:
-        modified_deployment_spec = copy.deepcopy(deployment_spec)
-        container = modified_deployment_spec['template']['spec']['containers'][0]
+    for pod_spec in pod_specs:
+        modified_pod_spec = copy.deepcopy(pod_spec)
+        container = modified_pod_spec['containers'][0]
 
         # Add environment variables
         container['env'] = container.get('env', []) + [
@@ -61,10 +61,10 @@ echo "SQL script executed successfully"
         }
         container['lifecycle'] = lifecycle
 
-        modified_deployment_specs.append(modified_deployment_spec)
+        modified_pod_specs.append(modified_pod_spec)
     
     return {
-        "deployment_specs": modified_deployment_specs,
+        "pod_specs": modified_pod_specs,
         "config_map": {}
     }
 
